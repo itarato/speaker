@@ -26,15 +26,30 @@ end
 class WordExercise
     extend(T::Sig)
 
+    MISTAKE_REPLY = T.let(
+        [
+            "Oh no. What a clumsy finger!",
+            "Slow down baby!",
+            "Hey! What is happening?",
+            "Not good. Are you ok?",
+        ],
+        T::Array[String],
+    )
+    MISTAKE_REPLY_THRESHOLD = 4
+
     sig { params(word: String, speaker: Speaker::Interface).void }
     def initialize(word, speaker)
         @word = word
         @speaker = speaker
+        @mistake_counter = T.let(0, Integer)
         @buffer = T.let("", String)
     end
 
     sig { void }
     def run
+        print_screen
+        3.times { @speaker.speak("#{@word}."); sleep(0.2) }
+
         while true
             print_screen
 
@@ -43,14 +58,30 @@ class WordExercise
             exit if ch.ord == 27
             next if ch < 'a' || ch > 'z'
 
-            @buffer += ch if ch == @word.chars[@buffer.size]
+            @speaker.speak_async(ch)
 
-            if @word == @buffer
-                @speaker.speak("Amazing! Lets do another one!")
-                break
+            if ch == @word.chars[@buffer.size]
+                @buffer += ch
+                @mistake_counter = 0
+            else
+                @mistake_counter += 1
             end
 
-            @speaker.speak(ch)
+            if @mistake_counter >= MISTAKE_REPLY_THRESHOLD
+                @mistake_counter = 0
+
+                sleep(1)
+                @speaker.speak(T.unsafe(MISTAKE_REPLY.sample))
+            end
+
+            if @word == @buffer
+                print_screen
+
+                sleep(1)
+                @speaker.speak("Amazing! Lets do another one!")
+
+                break
+            end
         end
     end
 
@@ -77,11 +108,45 @@ class App
 
     COLLECTION = T.let(
         [
-            "apple",
+            "ran",
+            "man",
+            "her",
+            "here",
+            "dog",
+            "him",
+            "cow",
+            "home",
+            "fat",
+            "good",
+            "ride",
+            "his",
+            "day",
+            "cat",
+            "like",
+            "car",
+            "box",
+            "hot",
+            "play",
+            "ball",
+            "cold",
+            "bed",
+            "yes",
+            "book",
+            "pan",
+            "no",
+            "far",
+            "fun",
+            "one",
+            "tree",
+            "lennox",
             "dad",
             "mom",
             "ruby",
-            "lennox",
+            "house",
+            "door",
+            "pee",
+            "poop",
+            "butt",
         ],
         T::Array[String],
     )
@@ -114,11 +179,16 @@ module Speaker
         extend(T::Sig)
         extend(T::Helpers)
 
-        interface!
+        abstract!
         sealed!
 
         sig { abstract.params(sentence: String).void }
         def speak(sentence); end
+
+        sig { params(sentence: String).void }
+        def speak_async(sentence)
+            Thread.new { speak(sentence) }
+        end
     end
 
     class MacOsSpeaker
@@ -128,7 +198,7 @@ module Speaker
 
         sig { override.params(sentence: String).void }
         def speak(sentence)
-            Thread.new { system("say '#{sentence}'") }
+            system("say '#{sentence}'")
         end
     end
 
@@ -139,7 +209,7 @@ module Speaker
 
         sig { override.params(sentence: String).void }
         def speak(sentence)
-            Thread.new { system("echo '#{sentence}' | espeak") }
+            system("echo '#{sentence}' | espeak")
         end
     end
 end
