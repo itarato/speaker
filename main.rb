@@ -46,11 +46,11 @@ class WordExercise
             @buffer += ch if ch == @word.chars[@buffer.size]
 
             if @word == @buffer
-                @speaker.speak("#{ch.upcase}. Amazing! Lets do another one!")
+                @speaker.speak("Amazing! Lets do another one!")
                 break
             end
 
-            @speaker.speak(ch.upcase)
+            @speaker.speak(ch)
         end
     end
 
